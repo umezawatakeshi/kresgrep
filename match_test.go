@@ -20,6 +20,8 @@ package main
 import (
 	"regexp"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 func TestMatch(t *testing.T) {
@@ -29,12 +31,14 @@ func TestMatch(t *testing.T) {
 		KindPattern      string
 		NamePattern      string
 		NamespacePattern string
+		LabelSelector    string
 		Matched          bool
 		Err              bool
 	}{
 		{
 			"yaml parse error",
 			`xxx::xxx`,
+			"",
 			"",
 			"",
 			"",
@@ -52,6 +56,7 @@ metadata:
 			"",
 			"",
 			"",
+			"",
 			true,
 			false,
 		},
@@ -64,6 +69,7 @@ metadata:
   namespace: ccc
 `,
 			"a.a",
+			"",
 			"",
 			"",
 			true,
@@ -80,6 +86,7 @@ metadata:
 			"a.a",
 			"",
 			"",
+			"",
 			false,
 			false,
 		},
@@ -93,6 +100,7 @@ metadata:
 `,
 			"",
 			"b*",
+			"",
 			"",
 			true,
 			false,
@@ -108,6 +116,7 @@ metadata:
 			"",
 			"bb*",
 			"",
+			"",
 			false,
 			false,
 		},
@@ -122,6 +131,7 @@ metadata:
 			"",
 			"",
 			"c[c]c",
+			"",
 			true,
 			false,
 		},
@@ -136,6 +146,7 @@ metadata:
 			"",
 			"",
 			"c[c]c",
+			"",
 			false,
 			false,
 		},
@@ -149,7 +160,42 @@ metadata:
 			"",
 			"",
 			"default",
+			"",
 			true,
+			false,
+		},
+		{
+			"match label",
+			`
+kind: aaa
+metadata:
+  name: bbb
+  namespace: ccc
+  labels:
+    release: stable
+`,
+			"",
+			"",
+			"",
+			"release=stable",
+			true,
+			false,
+		},
+		{
+			"unmatch label",
+			`
+kind: aaa
+metadata:
+  name: bbb
+  namespace: ccc
+  labels:
+    release: stable
+`,
+			"",
+			"",
+			"",
+			"release=canary",
+			false,
 			false,
 		},
 		{
@@ -159,10 +205,13 @@ kind: aaa
 metadata:
   name: bbb
   namespace: ccc
+  labels:
+    release: stable
 `,
 			"a.a",
 			"bb*",
 			"c[c]c",
+			"release=stable",
 			true,
 			false,
 		},
@@ -177,15 +226,18 @@ metadata:
 			"a.a",
 			"bb*",
 			"c[c]c",
+			"",
 			false,
 			false,
 		},
 	}
 
 	for i, c := range cases {
+		var err error
 		nameRegexp = regexp.MustCompile(c.NamePattern)
 		namespaceRegexp = regexp.MustCompile(c.NamespacePattern)
 		kindRegexp = regexp.MustCompile(c.KindPattern)
+		labelSelector, err = labels.Parse(c.LabelSelector)
 		matched, err := match([]byte(c.Yaml))
 		if matched != c.Matched || (err != nil) != c.Err {
 			t.Error("case", i, "\""+c.CaseName+"\"", "failed")

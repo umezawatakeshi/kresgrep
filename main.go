@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	flag "github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/labels"
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 )
@@ -33,12 +34,14 @@ import (
 var kindRegexp *regexp.Regexp
 var nameRegexp *regexp.Regexp
 var namespaceRegexp *regexp.Regexp
+var labelSelector labels.Selector = labels.Everything()
 
 type resource struct {
 	Kind     string `json:"kind"`
 	Metadata struct {
-		Name      string `json:"name"`
-		Namespace string `json:"namespace"`
+		Name      string     `json:"name"`
+		Namespace string     `json:"namespace"`
+		Labels    labels.Set `json:"labels"`
 	} `json:"metadata"`
 }
 
@@ -53,7 +56,8 @@ func match(data []byte) (bool, error) {
 	}
 	return kindRegexp.MatchString(res.Kind) &&
 			nameRegexp.MatchString(res.Metadata.Name) &&
-			namespaceRegexp.MatchString(res.Metadata.Namespace),
+			namespaceRegexp.MatchString(res.Metadata.Namespace) &&
+			labelSelector.Matches(labels.Set(res.Metadata.Labels)),
 		nil
 }
 
@@ -95,6 +99,7 @@ func main() {
 	kindPattern := flag.StringP("kind", "k", "", "search pattern for kind")
 	namePattern := flag.StringP("name", "a", "", "search pattern for name")
 	namespacePattern := flag.StringP("namespace", "n", "", "search pattern for namespace")
+	labelPattern := flag.StringP("selector", "l", "", "label selector")
 
 	flag.Parse()
 
@@ -112,6 +117,11 @@ func main() {
 	namespaceRegexp, err = regexp.Compile(*namespacePattern)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to compile namespace pattern: %v\n", err)
+		os.Exit(1)
+	}
+	labelSelector, err = labels.Parse(*labelPattern)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to compile label selector: %v\n", err)
 		os.Exit(1)
 	}
 

@@ -10,6 +10,7 @@ kresgrep [options...] [filenames...]
   -k, --kind        search pattern for kind
   -a, --name        search pattern for name
   -n, --namespace   search pattern for namespace
+  -l, --selector    label selector
 ```
 
 kresgrep searches for resource that matches all the specified patterns.
@@ -24,6 +25,9 @@ kresgrep searches for resource that matches all the specified patterns.
   search for resources whose name begin with `nginx`.
 - `kresgrep --kind '^ConfigMap$' --namespace 'myapp' common.yaml`  
   search for ConfigMap resources whose namespace contains `myapp`.
+- `kresgrep --selector 'release=stable' common.yaml`  
+  search for resources whose `release` label equals to `stable`.
+
 
 ## Caveat
 
@@ -33,7 +37,6 @@ kresgrep searches for resource that matches all the specified patterns.
 
 ## Todo
 
-- Label based search
 - Ignore case match
 - Fixed string match
 - Inverted match
